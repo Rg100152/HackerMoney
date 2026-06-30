@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>HackerMoney | Advanced Bug Bounty Banking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --bg-primary: #080808;
+            --bg-secondary: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --bg-elevated: #222;
+            --text: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #777;
+            --orange: #ff6d00;
+            --orange-light: #ff9100;
+            --orange-glow: rgba(255, 109, 0, 0.3);
+            --border: #2a2a2a;
+            --success: #00c853;
+            --danger: #ff1744;
+            --radius: 20px;
+            --radius-sm: 14px;
+            --radius-xs: 10px;
+            --transition: 0.2s ease;
+            --shadow-card: 0 8px 30px rgba(0,0,0,0.6);
+            --glass-bg: rgba(255,255,255,0.03);
+            --glass-border: rgba(255,255,255,0.08);
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            background: radial-gradient(ellipse at 30% 20%, rgba(255,109,0,0.04) 0%, transparent 60%),
+                        radial-gradient(ellipse at 70% 80%, rgba(255,145,0,0.03) 0%, transparent 60%),
+                        #080808;
+        }
+        .app {
+            width: 100%;
+            max-width: 430px;
+            height: 100vh;
+            max-height: 900px;
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 80px rgba(255,109,0,0.1);
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        @media (min-width: 431px) {
+            .app {
+                border-radius: 36px;
+                height: 95vh;
+                margin: 0 10px;
+                border: 1px solid var(--border);
+            }
+        }
+
+        /* Screen transition */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: var(--bg-primary);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            will-change: transform, opacity;
+            padding: 16px 16px 100px;
+            opacity: 0;
+            transform: translateX(30px);
+            pointer-events: none;
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+        }
+        .screen.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+            z-index: 1;
+        }
+        .screen.slide-left {
+            transform: translateX(-30px);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            background: rgba(10,10,10,0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+            padding-bottom: 10px;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            color: #666;
+            font-size: 10px;
+            font-weight: 600;
+            transition: 0.2s;
+            padding: 5px 12px;
+            border-radius: 12px;
+        }
+        .nav-item i { font-size: 22px; font-style: normal; }
+        .nav-item.active { color: var(--orange); }
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            width: 20px;
+            height: 3px;
+            background: var(--orange);
+            border-radius: 0 0 4px 4px;
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #080808;
+        }
+        .login-container {
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ff6d00, #ff3d00);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 38px;
+            font-weight: 900;
+            box-shadow: 0 0 40px rgba(255,61,0,0.5);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px rgba(255,61,0,0.4); }
+            50% { box-shadow: 0 0 50px rgba(255,109,0,0.7); }
+            100% { box-shadow: 0 0 20px rgba(255,61,0,0.4); }
+        }
+        .title { font-size: 30px; font-weight: 800; }
+        .title span { color: var(--orange); }
+        .input-field {
+            width: 100%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 18px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .input-field:focus { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(255,109,0,0.1); }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #ff6d00, #ff9100);
+            border: none;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 16px;
+            color: #000;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.97); }
+        .error { color: #ff5252; font-size: 13px; min-height: 20px; }
+
+        /* Cards & Components */
+        .balance-card {
+            background: linear-gradient(145deg, #1a1a1a, #111);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 28px 24px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+        .balance-amount {
+            font-size: 44px;
+            font-weight: 900;
+            letter-spacing: -1px;
+        }
+        .balance-amount small { font-size: 24px; color: var(--text-secondary); }
+        .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .quick-item {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 16px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .quick-item i { font-size: 24px; }
+        .quick-item span { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+        .quick-item:hover { background: #252525; }
+
+        .bounty-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: 18px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .bounty-item:hover { background: var(--bg-elevated); }
+        .bounty-icon {
+            width: 44px; height: 44px;
+            border-radius: 14px;
+            background: rgba(255,109,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .bounty-info { flex:1; }
+        .bounty-amount { font-weight: 700; }
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+
+        /* History filters */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .filter-chip {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: 0.2s;
+        }
+        .filter-chip.active { background: var(--orange); color: #000; }
+
+        /* Scan screen */
+        .scanner-view {
+            flex:1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            border-radius: 28px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .scanner-frame {
+            width: 220px;
+            height: 220px;
+            border: 3px solid var(--orange);
+            border-radius: 24px;
+            animation: scanPulse 1.5s infinite;
+        }
+        @keyframes scanPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255,109,0,0.4); }
+            70% { box-shadow: 0 0 0 30px rgba(255,109,0,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,109,0,0); }
+        }
+
+        /* Pay screen */
+        .pay-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: 28px;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.25s;
+        }
+        .modal.active { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 24px;
+            width: 90%;
+            max-width: 380px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fadeInUp 0.3s ease forwards; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- LOGIN SCREEN -->
+        <div class="screen active" id="loginScreen">
+            <div class="login-container">
+                <div class="logo">H</div>
+                <div class="title">Hacker<span>Money</span></div>
+                <p style="color:#777; font-size:13px;">Advanced Bug Bounty Banking</p>
+                <input type="text" id="userId" class="input-field" placeholder="User ID" value="">
+                <input type="password" id="password" class="input-field" placeholder="Password" value="">
+                <div class="error" id="loginError"></div>
+                <button class="btn" id="loginBtn">Sign In</button>
+                <button class="btn" style="background:transparent; color:white; border:1px solid #333;" onclick="fillDemo()">👤 Demo: raj / raj00</button>
+            </div>
+        </div>
+
+        <!-- HOME SCREEN -->
+        <div class="screen" id="homeScreen">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h2 style="font-weight:700;">Hacker<span style="color:var(--orange);">Money</span></h2>
+                <div style="width:36px;height:36px;border-radius:50%;background:#222;border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;">R</div>
+            </div>
+            <div class="balance-card">
+                <div style="color:#777; font-size:12px; text-transform:uppercase;">💰 Available Balance</div>
+                <div class="balance-amount" id="mainBalance">₹2,43,188<small>.16</small></div>
+                <div style="color:#555; font-size:12px; margin-top:8px;">🟢 Active &nbsp;|&nbsp; Bug Bounty Funds</div>
+            </div>
+            <div class="quick-grid">
+                <div class="quick-item" onclick="navigateTo('scanScreen')"><i>📷</i><span>Scan</span></div>
+                <div class="quick-item" onclick="navigateTo('payScreen')"><i>💸</i><span>Pay</span></div>
+                <div class="quick-item" onclick="navigateTo('historyScreen')"><i>📋</i><span>History</span></div>
+                <div class="quick-item" onclick="showToast('🐛 Report Bug')"><i>🐞</i><span>Report</span></div>
+            </div>
+            <h3 style="margin:16px 0 10px;">Recent Bounties</h3>
+            <div id="recentBounties"></div>
+        </div>
+
+        <!-- HISTORY SCREEN -->
+        <div class="screen" id="historyScreen">
+            <h2 style="margin-bottom:16px;">📋 Bounty History</h2>
+            <div class="filter-bar" id="filterBar">
+                <span class="filter-chip active" data-filter="all">All</span>
+                <span class="filter-chip" data-filter="credit">Credits</span>
+                <span class="filter-chip" data-filter="debit">Debits</span>
+            </div>
+            <input type="text" class="input-field" placeholder="🔍 Search by title..." id="searchInput" style="margin-bottom:16px;">
+            <div id="fullBountyList"></div>
+        </div>
+
+        <!-- SCAN SCREEN -->
+        <div class="screen" id="scanScreen">
+            <h2 style="margin-bottom:16px;">📷 Scan QR</h2>
+            <div class="scanner-view">
+                <div class="scanner-frame"></div>
+                <p style="color:#777; margin-top:20px;">Align QR code within frame</p>
+            </div>
+            <button class="btn" onclick="simulateScan()">Simulate Scan</button>
+        </div>
+
+        <!-- PAY SCREEN -->
+        <div class="screen" id="payScreen">
+            <h2 style="margin-bottom:20px;">💸 Send Money</h2>
+            <div class="pay-form">
+                <input type="text" class="input-field" placeholder="UPI ID or Bank Account" id="payeeId">
+                <input type="number" class="input-field" placeholder="Amount (₹)" id="payAmount">
+                <button class="btn" id="payNowBtn">Pay Now</button>
+            </div>
+            <div style="margin-top:20px; color:#777; text-align:center;">Recent Payees</div>
+            <div class="bounty-item" style="margin-top:10px;" onclick="document.getElementById('payeeId').value='bugbounty@hackermoney'">
+                <div class="bounty-icon">🏦</div><div>bugbounty@hackermoney</div>
+            </div>
+        </div>
+
+        <!-- PROFILE SCREEN -->
+        <div class="screen" id="profileScreen">
+            <h2>👤 Profile</h2>
+            <div style="background:var(--bg-card); border-radius:24px; padding:20px; margin:20px 0;">
+                <p><strong>User:</strong> Raj</p>
+                <p><strong>UPI:</strong> raj@hackermoney</p>
+                <p><strong>Balance:</strong> ₹2,43,188.16</p>
+                <p><strong>Bounties Solved:</strong> 37</p>
+            </div>
+            <button class="btn" style="background:#ff3d00;" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item active" data-screen="homeScreen"><i>🏠</i><span>Home</span></div>
+            <div class="nav-item" data-screen="historyScreen"><i>📋</i><span>History</span></div>
+            <div class="nav-item" data-screen="scanScreen"><i>📷</i><span>Scan</span></div>
+            <div class="nav-item" data-screen="payScreen"><i>💸</i><span>Pay</span></div>
+            <div class="nav-item" data-screen="profileScreen"><i>👤</i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Transaction Detail Modal -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content" id="modalContent"></div>
+    </div>
+
+    <div id="toast" style="position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#222; color:white; padding:10px 24px; border-radius:30px; font-size:13px; z-index:300; opacity:0; transition:0.3s; pointer-events:none;"></div>
+
+    <script>
+        (function() {
+            // ---- STATE ----
+            const VALID_USER = 'raj';
+            const VALID_PASS = 'raj00';
+            let balance = 243188.16;
+            let currentScreen = 'loginScreen';
+            let bountyData = [
+                {id:'BB-089',title:'SQLi - PayTM Gateway',date:'28 Jun 2026',amount:85000,type:'credit',platform:'HackerOne',icon:'🔓',desc:'Critical SQL injection in payment flow.'},
+                {id:'BB-077',title:'XSS - Google Subdomain',date:'15 Jun 2026',amount:42000,type:'credit',platform:'Bugcrowd',icon:'💉',desc:'Reflected XSS on support.google.com.'},
+                {id:'BB-065',title:'IDOR - Facebook Graph',date:'02 Jun 2026',amount:67500,type:'credit',platform:'Meta BBP',icon:'🔑',desc:'Access other users private photos.'},
+                {id:'BB-058',title:'CSRF Bypass - Amazon',date:'20 May 2026',amount:38000,type:'credit',platform:'HackerOne',icon:'⚡',desc:'CSRF token validation flaw.'},
+                {id:'BB-049',title:'RCE - Tesla Upload',date:'05 May 2026',amount:100000,type:'credit',platform:'Bugcrowd',icon:'💀',desc:'Remote code execution via file.'},
+                {id:'BB-041',title:'SSRF - Shopify Internal',date:'18 Apr 2026',amount:55000,type:'credit',platform:'HackerOne',icon:'🌐',desc:'Internal network access via SSRF.'},
+                {id:'TX-033',title:'Withdrawal to Bank',date:'10 Apr 2026',amount:120000,type:'debit',platform:'Self',icon:'🏦',desc:'Bank transfer withdrawal.'},
+                {id:'BB-028',title:'Auth Bypass - Microsoft',date:'22 Mar 2026',amount:92000,type:'credit',platform:'MSRC',icon:'🔐',desc:'Bypassed 2FA on Office 365.'},
+                {id:'BB-019',title:'Open Redirect - LinkedIn',date:'08 Mar 2026',amount:25000,type:'credit',platform:'HackerOne',icon:'↗️',desc:'Open redirect chained with OAuth.'},
+                {id:'BB-012',title:'Race Condition - Coinbase',date:'14 Feb 2026',amount:78000,type:'credit',platform:'HackerOne',icon:'🏎️',desc:'Double spend via race condition.'}
+            ];
+
+            // ---- DOM Elements ----
+            const screens = {
+                login: document.getElementById('loginScreen'),
+                home: document.getElementById('homeScreen'),
+                history: document.getElementById('historyScreen'),
+                scan: document.getElementById('scanScreen'),
+                pay: document.getElementById('payScreen'),
+                profile: document.getElementById('profileScreen')
+            };
+            const navItems = document.querySelectorAll('.nav-item');
+            const mainBalanceEl = document.getElementById('mainBalance');
+            const recentBountiesEl = document.getElementById('recentBounties');
+            const fullBountyListEl = document.getElementById('fullBountyList');
+            const filterBar = document.getElementById('filterBar');
+            const searchInput = document.getElementById('searchInput');
+            const detailModal = document.getElementById('detailModal');
+            const modalContent = document.getElementById('modalContent');
+            const toastEl = document.getElementById('toast');
+
+            // ---- Functions ----
+            function formatBalance(amount) {
+                return '₹' + amount.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+            }
+            function updateBalanceDisplay() {
+                if (mainBalanceEl) mainBalanceEl.innerHTML = formatBalance(balance).replace('₹', '₹') + '<small>.16</small>'; // keep decimals static for demo
+                // Actually update full
+                mainBalanceEl.innerHTML = formatBalance(balance);
+            }
+
+            function renderRecentBounties() {
+                if (!recentBountiesEl) return;
+                const recent = bountyData.slice(0, 4);
+                recentBountiesEl.innerHTML = recent.map(b => `
+                    <div class="bounty-item animate-in" onclick="showDetail('${b.id}')">
+                        <div class="bounty-icon">${b.icon}</div>
+                        <div class="bounty-info">
+                            <div style="font-weight:600;">${b.title}</div>
+                            <div style="font-size:11px;color:#777;">${b.platform} • ${b.date}</div>
+                        </div>
+                        <div class="bounty-amount ${b.type==='credit'?'text-success':'text-danger'}">${b.type==='credit'?'+':'-'}₹${b.amount.toLocaleString('en-IN')}</div>
+                    </div>
+                `).join('');
+            }
+
+            function renderFullHistory(filter = 'all', search = '') {
+                if (!fullBountyListEl) return;
+                let filtered = bountyData;
+                if (filter === 'credit') filtered = filtered.filter(b => b.type === 'credit');
+                if (filter === 'debit') filtered = filtered.filter(b => b.type === 'debit');
+                if (search.trim()) {
+                    const s = search.toLowerCase();
+                    filtered = filtered.filter(b => b.title.toLowerCase().includes(s) || b.platform.toLowerCase().includes(s));
+                }
+                fullBountyListEl.innerHTML = filtered.map(b => `
+                    <div class="bounty-item animate-in" onclick="showDetail('${b.id}')">
+                        <div class="bounty-icon">${b.icon}</div>
+                        <div class="bounty-info">
+                            <div style="font-weight:600;">${b.title}</div>
+                            <div style="font-size:11px;color:#777;">${b.platform} • ${b.date}</div>
+                        </div>
+                        <div class="bounty-amount ${b.type==='credit'?'text-success':'text-danger'}">${b.type==='credit'?'+':'-'}₹${b.amount.toLocaleString('en-IN')}</div>
+                    </div>
+                `).join('') || '<p style="color:#777; text-align:center; padding:20px;">No transactions found.</p>';
+            }
+
+            window.showDetail = function(id) {
+                const b = bountyData.find(x => x.id === id);
+                if (!b) return;
+                modalContent.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>${b.id}</h3>
+                        <span onclick="document.getElementById('detailModal').classList.remove('active')" style="cursor:pointer; font-size:20px;">✕</span>
+                    </div>
+                    <div style="margin:16px 0;">
+                        <p><strong>${b.title}</strong></p>
+                        <p style="color:#777;">${b.platform} • ${b.date}</p>
+                        <p style="font-size:24px; font-weight:700;" class="${b.type==='credit'?'text-success':'text-danger'}">${b.type==='credit'?'+':'-'}₹${b.amount.toLocaleString('en-IN')}</p>
+                        <p style="margin-top:12px;">${b.desc || 'No description.'}</p>
+                    </div>
+                    <button class="btn" style="margin-top:10px;" onclick="document.getElementById('detailModal').classList.remove('active')">Close</button>
+                `;
+                detailModal.classList.add('active');
+            };
+
+            window.showToast = function(msg) {
+                toastEl.textContent = msg;
+                toastEl.style.opacity = '1';
+                setTimeout(() => { toastEl.style.opacity = '0'; }, 2000);
+            };
+
+            function navigateTo(screenId) {
+                if (!isLoggedIn() && screenId !== 'loginScreen') {
+                    showToast('Please login first');
+                    return;
+                }
+                Object.values(screens).forEach(s => s.classList.remove('active'));
+                if (screens[screenId]) screens[screenId].classList.add('active');
+                currentScreen = screenId;
+                updateNavActive(screenId);
+                if (screenId === 'homeScreen') {
+                    updateBalanceDisplay();
+                    renderRecentBounties();
+                }
+                if (screenId === 'historyScreen') renderFullHistory(getActiveFilter(), searchInput?.value || '');
+            }
+
+            function updateNavActive(screenId) {
+                navItems.forEach(item => {
+                    const target = item.dataset.screen;
+                    item.classList.toggle('active', target === screenId);
+                });
+            }
+
+            function getActiveFilter() {
+                const activeChip = document.querySelector('#filterBar .filter-chip.active');
+                return activeChip ? activeChip.dataset.filter : 'all';
+            }
+
+            function isLoggedIn() {
+                return sessionStorage.getItem('hm_logged') === 'true';
+            }
+
+            function login() {
+                sessionStorage.setItem('hm_logged', 'true');
+                screens.login.classList.remove('active');
+                navigateTo('homeScreen');
+            }
+
+            function logout() {
+                sessionStorage.removeItem('hm_logged');
+                Object.values(screens).forEach(s => s.classList.remove('active'));
+                screens.login.classList.add('active');
+                currentScreen = 'loginScreen';
+                updateNavActive('homeScreen');
+                showToast('Logged out');
+            }
+
+            window.fillDemo = function() {
+                document.getElementById('userId').value = VALID_USER;
+                document.getElementById('password').value = VALID_PASS;
+            };
+
+            // ---- Event Listeners ----
+            document.getElementById('loginBtn').addEventListener('click', () => {
+                const uid = document.getElementById('userId').value.trim();
+                const pwd = document.getElementById('password').value.trim();
+                const err = document.getElementById('loginError');
+                if (uid === VALID_USER && pwd === VALID_PASS) {
+                    err.textContent = '';
+                    login();
+                } else {
+                    err.textContent = 'Invalid credentials! Use raj / raj00';
+                }
+            });
+
+            // Bottom nav
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const screenId = item.dataset.screen;
+                    navigateTo(screenId);
+                });
+            });
+
+            // Filter chips
+            filterBar.addEventListener('click', (e) => {
+                if (e.target.classList.contains('filter-chip')) {
+                    filterBar.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                    e.target.classList.add('active');
+                    renderFullHistory(getActiveFilter(), searchInput.value);
+                }
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                renderFullHistory(getActiveFilter(), e.target.value);
+            });
+
+            // Pay functionality
+            document.getElementById('payNowBtn').addEventListener('click', () => {
+                const payee = document.getElementById('payeeId').value.trim();
+                const amountStr = document.getElementById('payAmount').value;
+                const amount = parseFloat(amountStr);
+                if (!payee || isNaN(amount) || amount <= 0) {
+                    showToast('Enter valid details');
+                    return;
+                }
+                if (amount > balance) {
+                    showToast('Insufficient balance');
+                    return;
+                }
+                balance -= amount;
+                updateBalanceDisplay();
+                // Add debit transaction
+                bountyData.unshift({
+                    id: 'TX-' + Math.floor(Math.random()*900+100),
+                    title: 'Payment to ' + payee,
+                    date: new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}),
+                    amount: amount,
+                    type: 'debit',
+                    platform: 'UPI',
+                    icon: '💸',
+                    desc: 'Sent ₹'+amount.toLocaleString('en-IN')+' to '+payee
+                });
+                document.getElementById('payeeId').value = '';
+                document.getElementById('payAmount').value = '';
+                showToast('Payment of ₹'+amount.toLocaleString('en-IN')+' sent!');
+                if (currentScreen === 'homeScreen') renderRecentBounties();
+                if (currentScreen === 'historyScreen') renderFullHistory(getActiveFilter(), searchInput.value);
+            });
+
+            // Scan simulation
+            window.simulateScan = function() {
+                showToast('QR scanned: bugbounty@hackermoney');
+                document.getElementById('payeeId').value = 'bugbounty@hackermoney';
+                navigateTo('payScreen');
+            };
+
+            // Close modal on overlay click
+            detailModal.addEventListener('click', (e) => {
+                if (e.target === detailModal) detailModal.classList.remove('active');
+            });
+
+            // Initial check
+            if (isLoggedIn()) {
+                screens.login.classList.remove('active');
+                navigateTo('homeScreen');
+            } else {
+                screens.login.classList.add('active');
+            }
+
+            // Persist balance? Not needed but can be added
+            updateBalanceDisplay();
+            renderRecentBounties();
+        })();
+    </script>
+</body>
+</html>

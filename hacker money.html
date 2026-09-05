@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>HackerMoney | Bug Bounty Wallet Demo</title>
+<title>HackerMoney | Bug Bounty Wallet money</title>
 
 <style>
 *{
@@ -612,7 +612,7 @@ button{
         </div>
 
         <div class="subtitle">
-            Bug Bounty Wallet • DEMO
+            Bug Bounty Wallet • money
         </div>
 
         <input
@@ -636,8 +636,8 @@ button{
             Sign In
         </button>
 
-        <button id="demoBtn" class="btn secondary">
-            👤 Fill Demo Account
+        <button id="moneyBtn" class="btn secondary">
+            👤 Fill money Account
         </button>
 
     </div>
@@ -664,7 +664,7 @@ button{
         </div>
 
         <div class="status">
-            🟢 Active • Bug Bounty Funds • Demo
+            🟢 Active • Bug Bounty Funds • money
         </div>
 
     </div>
@@ -804,7 +804,7 @@ button{
             </div>
 
             <div class="tx-meta">
-                Demo payee
+                money payee
             </div>
         </div>
 
@@ -838,7 +838,7 @@ button{
         </div>
 
         <div class="profile-row">
-            <strong>Account:</strong> Demo
+            <strong>Account:</strong> money
         </div>
 
     </div>
@@ -948,7 +948,7 @@ let bountyData = [
     type:"credit",
     platform:"HackerOne",
     icon:"🔓",
-    desc:"Demo transaction representing a critical SQL injection bounty."
+    desc:"money transaction representing a critical SQL injection bounty."
 },
 
 {
@@ -959,7 +959,7 @@ let bountyData = [
     type:"credit",
     platform:"Bugcrowd",
     icon:"💉",
-    desc:"Demo reflected XSS bounty transaction."
+    desc:"money reflected XSS bounty transaction."
 },
 
 {
@@ -970,7 +970,7 @@ let bountyData = [
     type:"credit",
     platform:"Private Program",
     icon:"🔑",
-    desc:"Demo IDOR bounty transaction."
+    desc:"money IDOR bounty transaction."
 },
 
 {
@@ -981,7 +981,7 @@ let bountyData = [
     type:"credit",
     platform:"HackerOne",
     icon:"⚡",
-    desc:"Demo CSRF bounty transaction."
+    desc:"money CSRF bounty transaction."
 },
 
 {
@@ -992,7 +992,7 @@ let bountyData = [
     type:"credit",
     platform:"Bugcrowd",
     icon:"💻",
-    desc:"Demo remote-code-execution bounty transaction."
+    desc:"money remote-code-execution bounty transaction."
 },
 
 {
@@ -1003,7 +1003,7 @@ let bountyData = [
     type:"credit",
     platform:"HackerOne",
     icon:"🌐",
-    desc:"Demo SSRF bounty transaction."
+    desc:"money SSRF bounty transaction."
 },
 
 {
@@ -1014,7 +1014,7 @@ let bountyData = [
     type:"debit",
     platform:"Self",
     icon:"🏦",
-    desc:"Demo bank withdrawal."
+    desc:"money bank withdrawal."
 },
 
 {
@@ -1025,7 +1025,7 @@ let bountyData = [
     type:"credit",
     platform:"MSRC",
     icon:"🔐",
-    desc:"Demo authentication vulnerability bounty."
+    desc:"money authentication vulnerability bounty."
 },
 
 {
@@ -1036,7 +1036,7 @@ let bountyData = [
     type:"credit",
     platform:"HackerOne",
     icon:"↗️",
-    desc:"Demo open redirect bounty."
+    desc:"money open redirect bounty."
 },
 
 {
@@ -1047,7 +1047,7 @@ let bountyData = [
     type:"credit",
     platform:"HackerOne",
     icon:"🏎️",
-    desc:"Demo race-condition bounty."
+    desc:"money race-condition bounty."
 }
 
 ];
@@ -1408,7 +1408,7 @@ function makePayment(){
 
     if(amount > balance){
 
-        showToast("Insufficient demo balance");
+        showToast("Insufficient money balance");
 
         return;
     }
@@ -1436,11 +1436,11 @@ function makePayment(){
 
         type:"debit",
 
-        platform:"Demo UPI",
+        platform:"money UPI",
 
         icon:"💸",
 
-        desc:`Demo payment of ${formatMoney(amount)} to ${payee}.`
+        desc:`money payment of ${formatMoney(amount)} to ${payee}.`
 
     };
 
@@ -1453,7 +1453,7 @@ function makePayment(){
     updateBalance();
 
     showToast(
-        `Demo payment: ${formatMoney(amount)}`
+        `money payment: ${formatMoney(amount)}`
     );
 
 }
@@ -1515,14 +1515,14 @@ $("loginBtn").addEventListener("click",() => {
     }else{
 
         $("loginError").textContent =
-            "Invalid credentials. Demo: raj / raj00";
+            "Invalid credentials. money: raj / raj00";
 
     }
 
 });
 
 
-$("demoBtn").addEventListener("click",() => {
+$("moneyBtn").addEventListener("click",() => {
 
     $("userId").value = VALID_USER;
 

@@ -1,714 +1,1701 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>HackerMoney | Advanced Bug Bounty Banking</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        :root {
-            --bg-primary: #080808;
-            --bg-secondary: #0f0f0f;
-            --bg-card: #1a1a1a;
-            --bg-elevated: #222;
-            --text: #ffffff;
-            --text-secondary: #b0b0b0;
-            --text-muted: #777;
-            --orange: #ff6d00;
-            --orange-light: #ff9100;
-            --orange-glow: rgba(255, 109, 0, 0.3);
-            --border: #2a2a2a;
-            --success: #00c853;
-            --danger: #ff1744;
-            --radius: 20px;
-            --radius-sm: 14px;
-            --radius-xs: 10px;
-            --transition: 0.2s ease;
-            --shadow-card: 0 8px 30px rgba(0,0,0,0.6);
-            --glass-bg: rgba(255,255,255,0.03);
-            --glass-border: rgba(255,255,255,0.08);
-        }
-        body {
-            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow-x: hidden;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            background: radial-gradient(ellipse at 30% 20%, rgba(255,109,0,0.04) 0%, transparent 60%),
-                        radial-gradient(ellipse at 70% 80%, rgba(255,145,0,0.03) 0%, transparent 60%),
-                        #080808;
-        }
-        .app {
-            width: 100%;
-            max-width: 430px;
-            height: 100vh;
-            max-height: 900px;
-            background: var(--bg-primary);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 0 80px rgba(255,109,0,0.1);
-            border-radius: 0;
-            display: flex;
-            flex-direction: column;
-        }
-        @media (min-width: 431px) {
-            .app {
-                border-radius: 36px;
-                height: 95vh;
-                margin: 0 10px;
-                border: 1px solid var(--border);
-            }
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>HackerMoney | Bug Bounty Wallet Demo</title>
 
-        /* Screen transition */
-        .screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            background: var(--bg-primary);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-            will-change: transform, opacity;
-            padding: 16px 16px 100px;
-            opacity: 0;
-            transform: translateX(30px);
-            pointer-events: none;
-            scrollbar-width: thin;
-            scrollbar-color: #333 transparent;
-        }
-        .screen.active {
-            opacity: 1;
-            transform: translateX(0);
-            pointer-events: auto;
-            z-index: 1;
-        }
-        .screen.slide-left {
-            transform: translateX(-30px);
-        }
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
-        /* Bottom Navigation */
-        .bottom-nav {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 70px;
-            background: rgba(10,10,10,0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255,255,255,0.06);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 100;
-            padding-bottom: 10px;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            color: #666;
-            font-size: 10px;
-            font-weight: 600;
-            transition: 0.2s;
-            padding: 5px 12px;
-            border-radius: 12px;
-        }
-        .nav-item i { font-size: 22px; font-style: normal; }
-        .nav-item.active { color: var(--orange); }
-        .nav-item.active::after {
-            content: '';
-            position: absolute;
-            top: -8px;
-            width: 20px;
-            height: 3px;
-            background: var(--orange);
-            border-radius: 0 0 4px 4px;
-        }
+:root{
+    --bg:#080808;
+    --card:#171717;
+    --elevated:#222;
+    --border:#2b2b2b;
+    --text:#fff;
+    --muted:#888;
+    --orange:#ff6d00;
+    --orange2:#ff9100;
+    --green:#00c853;
+    --red:#ff1744;
+}
 
-        /* Login Screen */
-        #loginScreen {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #080808;
-        }
-        .login-container {
-            width: 100%;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 24px;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #ff6d00, #ff3d00);
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 38px;
-            font-weight: 900;
-            box-shadow: 0 0 40px rgba(255,61,0,0.5);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 20px rgba(255,61,0,0.4); }
-            50% { box-shadow: 0 0 50px rgba(255,109,0,0.7); }
-            100% { box-shadow: 0 0 20px rgba(255,61,0,0.4); }
-        }
-        .title { font-size: 30px; font-weight: 800; }
-        .title span { color: var(--orange); }
-        .input-field {
-            width: 100%;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 14px 18px;
-            color: white;
-            font-size: 16px;
-            outline: none;
-            transition: 0.2s;
-        }
-        .input-field:focus { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(255,109,0,0.1); }
-        .btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #ff6d00, #ff9100);
-            border: none;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 16px;
-            color: #000;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn:active { transform: scale(0.97); }
-        .error { color: #ff5252; font-size: 13px; min-height: 20px; }
+body{
+    min-height:100vh;
+    background:
+        radial-gradient(circle at 20% 10%,rgba(255,109,0,.08),transparent 35%),
+        radial-gradient(circle at 80% 90%,rgba(255,145,0,.05),transparent 35%),
+        var(--bg);
+    color:var(--text);
+    font-family:Inter,Segoe UI,system-ui,sans-serif;
+    display:flex;
+    justify-content:center;
+    overflow:hidden;
+}
 
-        /* Cards & Components */
-        .balance-card {
-            background: linear-gradient(145deg, #1a1a1a, #111);
-            border: 1px solid var(--border);
-            border-radius: 28px;
-            padding: 28px 24px;
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow-card);
-        }
-        .balance-amount {
-            font-size: 44px;
-            font-weight: 900;
-            letter-spacing: -1px;
-        }
-        .balance-amount small { font-size: 24px; color: var(--text-secondary); }
-        .quick-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 24px;
-        }
-        .quick-item {
-            background: var(--bg-card);
-            border-radius: 20px;
-            padding: 16px 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .quick-item i { font-size: 24px; }
-        .quick-item span { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
-        .quick-item:hover { background: #252525; }
+button,input{
+    font:inherit;
+}
 
-        .bounty-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            background: var(--bg-card);
-            padding: 16px;
-            border-radius: 18px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .bounty-item:hover { background: var(--bg-elevated); }
-        .bounty-icon {
-            width: 44px; height: 44px;
-            border-radius: 14px;
-            background: rgba(255,109,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-        .bounty-info { flex:1; }
-        .bounty-amount { font-weight: 700; }
-        .text-success { color: var(--success); }
-        .text-danger { color: var(--danger); }
+button{
+    cursor:pointer;
+}
 
-        /* History filters */
-        .filter-bar {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-        .filter-chip {
-            padding: 8px 16px;
-            background: var(--bg-card);
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--text-secondary);
-            transition: 0.2s;
-        }
-        .filter-chip.active { background: var(--orange); color: #000; }
+.app{
+    width:100%;
+    max-width:430px;
+    height:100vh;
+    max-height:900px;
+    position:relative;
+    overflow:hidden;
+    background:var(--bg);
+}
 
-        /* Scan screen */
-        .scanner-view {
-            flex:1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: #000;
-            border-radius: 28px;
-            margin: 20px 0;
-            position: relative;
-            overflow: hidden;
-        }
-        .scanner-frame {
-            width: 220px;
-            height: 220px;
-            border: 3px solid var(--orange);
-            border-radius: 24px;
-            animation: scanPulse 1.5s infinite;
-        }
-        @keyframes scanPulse {
-            0% { box-shadow: 0 0 0 0 rgba(255,109,0,0.4); }
-            70% { box-shadow: 0 0 0 30px rgba(255,109,0,0); }
-            100% { box-shadow: 0 0 0 0 rgba(255,109,0,0); }
-        }
+@media(min-width:431px){
+    .app{
+        height:95vh;
+        border:1px solid var(--border);
+        border-radius:32px;
+        margin:auto;
+        box-shadow:0 0 70px rgba(255,109,0,.12);
+    }
+}
 
-        /* Pay screen */
-        .pay-form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            background: var(--bg-card);
-            padding: 24px;
-            border-radius: 28px;
-        }
+/* SCREEN */
 
-        /* Modal */
-        .modal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-            opacity: 0;
-            pointer-events: none;
-            transition: 0.25s;
-        }
-        .modal.active { opacity: 1; pointer-events: auto; }
-        .modal-content {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 28px;
-            padding: 24px;
-            width: 90%;
-            max-width: 380px;
-        }
+.screen{
+    position:absolute;
+    inset:0;
+    padding:18px 16px 95px;
+    overflow-y:auto;
+    background:var(--bg);
 
-        /* Animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-in { animation: fadeInUp 0.3s ease forwards; }
-    </style>
+    opacity:0;
+    visibility:hidden;
+    transform:translateX(25px);
+    transition:.25s ease;
+}
+
+.screen.active{
+    opacity:1;
+    visibility:visible;
+    transform:translateX(0);
+    z-index:10;
+}
+
+.screen::-webkit-scrollbar{
+    width:4px;
+}
+
+.screen::-webkit-scrollbar-thumb{
+    background:#333;
+    border-radius:10px;
+}
+
+/* LOGIN */
+
+#loginScreen{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+}
+
+.login-container{
+    width:100%;
+    max-width:360px;
+    padding:20px;
+}
+
+.logo{
+    width:82px;
+    height:82px;
+    margin:auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:25px;
+    font-size:40px;
+    font-weight:900;
+    background:linear-gradient(135deg,#ff6d00,#ff3d00);
+    box-shadow:0 0 40px rgba(255,109,0,.45);
+    animation:pulse 2s infinite;
+}
+
+@keyframes pulse{
+    50%{
+        box-shadow:0 0 55px rgba(255,109,0,.75);
+    }
+}
+
+.title{
+    margin-top:22px;
+    font-size:30px;
+    font-weight:900;
+}
+
+.orange{
+    color:var(--orange);
+}
+
+.subtitle{
+    color:var(--muted);
+    font-size:13px;
+    margin:8px 0 25px;
+}
+
+.input{
+    width:100%;
+    padding:15px 17px;
+    margin-bottom:12px;
+    border-radius:15px;
+    border:1px solid var(--border);
+    background:var(--elevated);
+    color:#fff;
+    outline:none;
+}
+
+.input:focus{
+    border-color:var(--orange);
+    box-shadow:0 0 0 3px rgba(255,109,0,.12);
+}
+
+.btn{
+    width:100%;
+    padding:15px;
+    border:0;
+    border-radius:15px;
+    background:linear-gradient(135deg,var(--orange),var(--orange2));
+    color:#000;
+    font-weight:800;
+    margin-top:5px;
+    transition:.15s;
+}
+
+.btn:active{
+    transform:scale(.97);
+}
+
+.btn.secondary{
+    background:transparent;
+    border:1px solid var(--border);
+    color:#fff;
+}
+
+.btn.danger{
+    background:#ff3d00;
+    color:#fff;
+}
+
+.error{
+    min-height:20px;
+    color:#ff5252;
+    font-size:13px;
+    margin-bottom:5px;
+}
+
+/* HEADER */
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+}
+
+.header h2{
+    font-size:21px;
+}
+
+.avatar{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    border:2px solid var(--orange);
+    background:#222;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:800;
+}
+
+/* BALANCE */
+
+.balance-card{
+    padding:25px 22px;
+    border-radius:27px;
+    border:1px solid var(--border);
+    background:linear-gradient(145deg,#1c1c1c,#101010);
+    box-shadow:0 10px 35px rgba(0,0,0,.5);
+    position:relative;
+    overflow:hidden;
+}
+
+.balance-card::after{
+    content:"";
+    position:absolute;
+    width:130px;
+    height:130px;
+    right:-50px;
+    top:-50px;
+    border-radius:50%;
+    background:rgba(255,109,0,.08);
+}
+
+.balance-label{
+    color:#777;
+    font-size:11px;
+    text-transform:uppercase;
+}
+
+.balance{
+    margin-top:7px;
+    font-size:40px;
+    font-weight:900;
+    letter-spacing:-1px;
+}
+
+.status{
+    margin-top:9px;
+    color:#777;
+    font-size:11px;
+}
+
+/* QUICK ACTIONS */
+
+.quick-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:9px;
+    margin:20px 0;
+}
+
+.quick{
+    padding:15px 5px;
+    border-radius:18px;
+    background:var(--card);
+    text-align:center;
+    transition:.15s;
+    cursor:pointer;
+}
+
+.quick:active{
+    transform:scale(.95);
+}
+
+.quick-icon{
+    display:block;
+    font-size:23px;
+    margin-bottom:6px;
+}
+
+.quick span{
+    color:#aaa;
+    font-size:10px;
+    font-weight:700;
+}
+
+/* TRANSACTIONS */
+
+.section-title{
+    margin:18px 0 10px;
+    font-size:17px;
+}
+
+.transaction{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px;
+    margin-bottom:8px;
+    background:var(--card);
+    border-radius:17px;
+    cursor:pointer;
+    transition:.15s;
+}
+
+.transaction:active{
+    transform:scale(.98);
+}
+
+.tx-icon{
+    width:44px;
+    height:44px;
+    flex-shrink:0;
+    border-radius:14px;
+    background:rgba(255,109,0,.1);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+}
+
+.tx-info{
+    flex:1;
+    min-width:0;
+}
+
+.tx-title{
+    font-size:13px;
+    font-weight:700;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.tx-meta{
+    color:#777;
+    font-size:10px;
+    margin-top:4px;
+}
+
+.amount{
+    font-size:12px;
+    font-weight:800;
+    white-space:nowrap;
+}
+
+.credit{
+    color:var(--green);
+}
+
+.debit{
+    color:var(--red);
+}
+
+/* FILTER */
+
+.filter-bar{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+}
+
+.filter{
+    padding:8px 15px;
+    border-radius:20px;
+    background:var(--card);
+    color:#aaa;
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.filter.active{
+    background:var(--orange);
+    color:#000;
+}
+
+/* SCANNER */
+
+.scanner{
+    height:430px;
+    margin:15px 0;
+    border-radius:27px;
+    background:#000;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+}
+
+.scan-frame{
+    width:220px;
+    height:220px;
+    border:3px solid var(--orange);
+    border-radius:25px;
+    animation:scan 1.6s infinite;
+}
+
+@keyframes scan{
+    50%{
+        box-shadow:0 0 0 28px rgba(255,109,0,0);
+    }
+}
+
+.scanner p{
+    margin-top:20px;
+    color:#666;
+    font-size:12px;
+}
+
+/* PAY */
+
+.pay-box{
+    background:var(--card);
+    padding:22px;
+    border-radius:27px;
+}
+
+.pay-box .input{
+    margin-bottom:12px;
+}
+
+.recent{
+    margin-top:20px;
+    color:#777;
+    text-align:center;
+    font-size:12px;
+}
+
+/* PROFILE */
+
+.profile-card{
+    margin-top:20px;
+    padding:22px;
+    background:var(--card);
+    border-radius:25px;
+}
+
+.profile-row{
+    padding:13px 0;
+    border-bottom:1px solid #252525;
+    font-size:13px;
+}
+
+.profile-row:last-child{
+    border-bottom:0;
+}
+
+/* NAV */
+
+.bottom-nav{
+    position:absolute;
+    z-index:100;
+    bottom:0;
+    left:0;
+    width:100%;
+    height:72px;
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    padding-bottom:7px;
+    background:rgba(10,10,10,.9);
+    backdrop-filter:blur(20px);
+    border-top:1px solid rgba(255,255,255,.06);
+}
+
+.nav{
+    width:20%;
+    text-align:center;
+    color:#666;
+    font-size:9px;
+    font-weight:700;
+    cursor:pointer;
+    padding:5px;
+}
+
+.nav-icon{
+    display:block;
+    font-size:21px;
+    margin-bottom:3px;
+}
+
+.nav.active{
+    color:var(--orange);
+}
+
+/* MODAL */
+
+.modal{
+    position:fixed;
+    inset:0;
+    z-index:500;
+    background:rgba(0,0,0,.82);
+    backdrop-filter:blur(10px);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    opacity:0;
+    visibility:hidden;
+    transition:.2s;
+}
+
+.modal.active{
+    opacity:1;
+    visibility:visible;
+}
+
+.modal-box{
+    width:90%;
+    max-width:380px;
+    padding:23px;
+    border-radius:27px;
+    background:#111;
+    border:1px solid var(--border);
+}
+
+.modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.close{
+    cursor:pointer;
+    font-size:20px;
+    color:#aaa;
+}
+
+.modal-title{
+    margin-top:20px;
+    font-size:17px;
+    font-weight:800;
+}
+
+.modal-meta{
+    color:#777;
+    font-size:11px;
+    margin-top:6px;
+}
+
+.modal-amount{
+    margin:18px 0;
+    font-size:27px;
+    font-weight:900;
+}
+
+.modal-desc{
+    color:#aaa;
+    font-size:13px;
+    line-height:1.6;
+}
+
+/* TOAST */
+
+#toast{
+    position:fixed;
+    z-index:1000;
+    bottom:85px;
+    left:50%;
+    transform:translateX(-50%) translateY(15px);
+    background:#252525;
+    color:#fff;
+    padding:11px 20px;
+    border-radius:25px;
+    font-size:12px;
+    opacity:0;
+    pointer-events:none;
+    transition:.25s;
+    white-space:nowrap;
+}
+
+#toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+}
+
+.hidden{
+    display:none!important;
+}
+</style>
 </head>
+
 <body>
-    <div class="app">
-        <!-- LOGIN SCREEN -->
-        <div class="screen active" id="loginScreen">
-            <div class="login-container">
-                <div class="logo">H</div>
-                <div class="title">Hacker<span>Money</span></div>
-                <p style="color:#777; font-size:13px;">Advanced Bug Bounty Banking</p>
-                <input type="text" id="userId" class="input-field" placeholder="User ID" value="">
-                <input type="password" id="password" class="input-field" placeholder="Password" value="">
-                <div class="error" id="loginError"></div>
-                <button class="btn" id="loginBtn">Sign In</button>
-                <button class="btn" style="background:transparent; color:white; border:1px solid #333;" onclick="fillDemo()">👤 Demo: raj / raj00</button>
-            </div>
+
+<div class="app">
+
+<!-- LOGIN -->
+<section id="loginScreen" class="screen active">
+
+    <div class="login-container">
+
+        <div class="logo">H</div>
+
+        <div class="title">
+            Hacker<span class="orange">Money</span>
         </div>
 
-        <!-- HOME SCREEN -->
-        <div class="screen" id="homeScreen">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h2 style="font-weight:700;">Hacker<span style="color:var(--orange);">Money</span></h2>
-                <div style="width:36px;height:36px;border-radius:50%;background:#222;border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;">R</div>
-            </div>
-            <div class="balance-card">
-                <div style="color:#777; font-size:12px; text-transform:uppercase;">💰 Available Balance</div>
-                <div class="balance-amount" id="mainBalance">₹2,43,188<small>.16</small></div>
-                <div style="color:#555; font-size:12px; margin-top:8px;">🟢 Active &nbsp;|&nbsp; Bug Bounty Funds</div>
-            </div>
-            <div class="quick-grid">
-                <div class="quick-item" onclick="navigateTo('scanScreen')"><i>📷</i><span>Scan</span></div>
-                <div class="quick-item" onclick="navigateTo('payScreen')"><i>💸</i><span>Pay</span></div>
-                <div class="quick-item" onclick="navigateTo('historyScreen')"><i>📋</i><span>History</span></div>
-                <div class="quick-item" onclick="showToast('🐛 Report Bug')"><i>🐞</i><span>Report</span></div>
-            </div>
-            <h3 style="margin:16px 0 10px;">Recent Bounties</h3>
-            <div id="recentBounties"></div>
+        <div class="subtitle">
+            Bug Bounty Wallet • DEMO
         </div>
 
-        <!-- HISTORY SCREEN -->
-        <div class="screen" id="historyScreen">
-            <h2 style="margin-bottom:16px;">📋 Bounty History</h2>
-            <div class="filter-bar" id="filterBar">
-                <span class="filter-chip active" data-filter="all">All</span>
-                <span class="filter-chip" data-filter="credit">Credits</span>
-                <span class="filter-chip" data-filter="debit">Debits</span>
-            </div>
-            <input type="text" class="input-field" placeholder="🔍 Search by title..." id="searchInput" style="margin-bottom:16px;">
-            <div id="fullBountyList"></div>
-        </div>
+        <input
+            id="userId"
+            class="input"
+            type="text"
+            placeholder="User ID"
+            autocomplete="off"
+        >
 
-        <!-- SCAN SCREEN -->
-        <div class="screen" id="scanScreen">
-            <h2 style="margin-bottom:16px;">📷 Scan QR</h2>
-            <div class="scanner-view">
-                <div class="scanner-frame"></div>
-                <p style="color:#777; margin-top:20px;">Align QR code within frame</p>
-            </div>
-            <button class="btn" onclick="simulateScan()">Simulate Scan</button>
-        </div>
+        <input
+            id="password"
+            class="input"
+            type="password"
+            placeholder="Password"
+        >
 
-        <!-- PAY SCREEN -->
-        <div class="screen" id="payScreen">
-            <h2 style="margin-bottom:20px;">💸 Send Money</h2>
-            <div class="pay-form">
-                <input type="text" class="input-field" placeholder="UPI ID or Bank Account" id="payeeId">
-                <input type="number" class="input-field" placeholder="Amount (₹)" id="payAmount">
-                <button class="btn" id="payNowBtn">Pay Now</button>
-            </div>
-            <div style="margin-top:20px; color:#777; text-align:center;">Recent Payees</div>
-            <div class="bounty-item" style="margin-top:10px;" onclick="document.getElementById('payeeId').value='bugbounty@hackermoney'">
-                <div class="bounty-icon">🏦</div><div>bugbounty@hackermoney</div>
-            </div>
-        </div>
+        <div id="loginError" class="error"></div>
 
-        <!-- PROFILE SCREEN -->
-        <div class="screen" id="profileScreen">
-            <h2>👤 Profile</h2>
-            <div style="background:var(--bg-card); border-radius:24px; padding:20px; margin:20px 0;">
-                <p><strong>User:</strong> Raj</p>
-                <p><strong>UPI:</strong> raj@hackermoney</p>
-                <p><strong>Balance:</strong> ₹2,43,188.16</p>
-                <p><strong>Bounties Solved:</strong> 37</p>
-            </div>
-            <button class="btn" style="background:#ff3d00;" onclick="logout()">Logout</button>
-        </div>
+        <button id="loginBtn" class="btn">
+            Sign In
+        </button>
 
-        <!-- Bottom Navigation -->
-        <div class="bottom-nav">
-            <div class="nav-item active" data-screen="homeScreen"><i>🏠</i><span>Home</span></div>
-            <div class="nav-item" data-screen="historyScreen"><i>📋</i><span>History</span></div>
-            <div class="nav-item" data-screen="scanScreen"><i>📷</i><span>Scan</span></div>
-            <div class="nav-item" data-screen="payScreen"><i>💸</i><span>Pay</span></div>
-            <div class="nav-item" data-screen="profileScreen"><i>👤</i><span>Profile</span></div>
-        </div>
+        <button id="demoBtn" class="btn secondary">
+            👤 Fill Demo Account
+        </button>
+
     </div>
 
-    <!-- Transaction Detail Modal -->
-    <div class="modal" id="detailModal">
-        <div class="modal-content" id="modalContent"></div>
+</section>
+
+
+<!-- HOME -->
+<section id="homeScreen" class="screen">
+
+    <div class="header">
+        <h2>Hacker<span class="orange">Money</span></h2>
+        <div class="avatar">R</div>
     </div>
 
-    <div id="toast" style="position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#222; color:white; padding:10px 24px; border-radius:30px; font-size:13px; z-index:300; opacity:0; transition:0.3s; pointer-events:none;"></div>
+    <div class="balance-card">
 
-    <script>
-        (function() {
-            // ---- STATE ----
-            const VALID_USER = 'raj';
-            const VALID_PASS = 'raj00';
-            let balance = 243188.16;
-            let currentScreen = 'loginScreen';
-            let bountyData = [
-                {id:'BB-089',title:'SQLi - PayTM Gateway',date:'28 Jun 2026',amount:85000,type:'credit',platform:'HackerOne',icon:'🔓',desc:'Critical SQL injection in payment flow.'},
-                {id:'BB-077',title:'XSS - Google Subdomain',date:'15 Jun 2026',amount:42000,type:'credit',platform:'Bugcrowd',icon:'💉',desc:'Reflected XSS on support.google.com.'},
-                {id:'BB-065',title:'IDOR - Facebook Graph',date:'02 Jun 2026',amount:67500,type:'credit',platform:'Meta BBP',icon:'🔑',desc:'Access other users private photos.'},
-                {id:'BB-058',title:'CSRF Bypass - Amazon',date:'20 May 2026',amount:38000,type:'credit',platform:'HackerOne',icon:'⚡',desc:'CSRF token validation flaw.'},
-                {id:'BB-049',title:'RCE - Tesla Upload',date:'05 May 2026',amount:100000,type:'credit',platform:'Bugcrowd',icon:'💀',desc:'Remote code execution via file.'},
-                {id:'BB-041',title:'SSRF - Shopify Internal',date:'18 Apr 2026',amount:55000,type:'credit',platform:'HackerOne',icon:'🌐',desc:'Internal network access via SSRF.'},
-                {id:'TX-033',title:'Withdrawal to Bank',date:'10 Apr 2026',amount:120000,type:'debit',platform:'Self',icon:'🏦',desc:'Bank transfer withdrawal.'},
-                {id:'BB-028',title:'Auth Bypass - Microsoft',date:'22 Mar 2026',amount:92000,type:'credit',platform:'MSRC',icon:'🔐',desc:'Bypassed 2FA on Office 365.'},
-                {id:'BB-019',title:'Open Redirect - LinkedIn',date:'08 Mar 2026',amount:25000,type:'credit',platform:'HackerOne',icon:'↗️',desc:'Open redirect chained with OAuth.'},
-                {id:'BB-012',title:'Race Condition - Coinbase',date:'14 Feb 2026',amount:78000,type:'credit',platform:'HackerOne',icon:'🏎️',desc:'Double spend via race condition.'}
-            ];
+        <div class="balance-label">
+            💰 Available Balance
+        </div>
 
-            // ---- DOM Elements ----
-            const screens = {
-                login: document.getElementById('loginScreen'),
-                home: document.getElementById('homeScreen'),
-                history: document.getElementById('historyScreen'),
-                scan: document.getElementById('scanScreen'),
-                pay: document.getElementById('payScreen'),
-                profile: document.getElementById('profileScreen')
-            };
-            const navItems = document.querySelectorAll('.nav-item');
-            const mainBalanceEl = document.getElementById('mainBalance');
-            const recentBountiesEl = document.getElementById('recentBounties');
-            const fullBountyListEl = document.getElementById('fullBountyList');
-            const filterBar = document.getElementById('filterBar');
-            const searchInput = document.getElementById('searchInput');
-            const detailModal = document.getElementById('detailModal');
-            const modalContent = document.getElementById('modalContent');
-            const toastEl = document.getElementById('toast');
+        <div id="mainBalance" class="balance">
+            ₹2,43,188.16
+        </div>
 
-            // ---- Functions ----
-            function formatBalance(amount) {
-                return '₹' + amount.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        <div class="status">
+            🟢 Active • Bug Bounty Funds • Demo
+        </div>
+
+    </div>
+
+
+    <div class="quick-grid">
+
+        <div class="quick" data-go="scanScreen">
+            <span class="quick-icon">📷</span>
+            <span>Scan</span>
+        </div>
+
+        <div class="quick" data-go="payScreen">
+            <span class="quick-icon">💸</span>
+            <span>Pay</span>
+        </div>
+
+        <div class="quick" data-go="historyScreen">
+            <span class="quick-icon">📋</span>
+            <span>History</span>
+        </div>
+
+        <div class="quick" id="reportBtn">
+            <span class="quick-icon">🐞</span>
+            <span>Report</span>
+        </div>
+
+    </div>
+
+
+    <h3 class="section-title">
+        Recent Bounties
+    </h3>
+
+    <div id="recentBounties"></div>
+
+</section>
+
+
+<!-- HISTORY -->
+<section id="historyScreen" class="screen">
+
+    <h2>📋 Bounty History</h2>
+
+    <div class="filter-bar" style="margin-top:16px">
+
+        <div class="filter active" data-filter="all">
+            All
+        </div>
+
+        <div class="filter" data-filter="credit">
+            Credits
+        </div>
+
+        <div class="filter" data-filter="debit">
+            Debits
+        </div>
+
+    </div>
+
+    <input
+        id="searchInput"
+        class="input"
+        placeholder="🔍 Search transactions..."
+    >
+
+    <div id="fullBountyList"></div>
+
+</section>
+
+
+<!-- SCAN -->
+<section id="scanScreen" class="screen">
+
+    <h2>📷 Scan QR</h2>
+
+    <div class="scanner">
+
+        <div class="scan-frame"></div>
+
+        <p>
+            Align QR code within frame
+        </p>
+
+    </div>
+
+    <button id="simulateScanBtn" class="btn">
+        Simulate Scan
+    </button>
+
+</section>
+
+
+<!-- PAY -->
+<section id="payScreen" class="screen">
+
+    <h2>💸 Send Money</h2>
+
+    <div class="pay-box" style="margin-top:20px">
+
+        <input
+            id="payeeId"
+            class="input"
+            placeholder="UPI ID or Bank Account"
+        >
+
+        <input
+            id="payAmount"
+            class="input"
+            type="number"
+            min="1"
+            step="0.01"
+            placeholder="Amount (₹)"
+        >
+
+        <button id="payNowBtn" class="btn">
+            Pay Now
+        </button>
+
+    </div>
+
+    <div class="recent">
+        Recent Payees
+    </div>
+
+    <div
+        id="recentPayee"
+        class="transaction"
+        style="margin-top:10px"
+    >
+
+        <div class="tx-icon">🏦</div>
+
+        <div class="tx-info">
+            <div class="tx-title">
+                bugbounty@hackermoney
+            </div>
+
+            <div class="tx-meta">
+                Demo payee
+            </div>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- PROFILE -->
+<section id="profileScreen" class="screen">
+
+    <h2>👤 Profile</h2>
+
+    <div class="profile-card">
+
+        <div class="profile-row">
+            <strong>User:</strong> Raj
+        </div>
+
+        <div class="profile-row">
+            <strong>UPI:</strong> raj@hackermoney
+        </div>
+
+        <div class="profile-row">
+            <strong>Balance:</strong>
+            <span id="profileBalance">₹2,43,188.16</span>
+        </div>
+
+        <div class="profile-row">
+            <strong>Bounties Solved:</strong> 37
+        </div>
+
+        <div class="profile-row">
+            <strong>Account:</strong> Demo
+        </div>
+
+    </div>
+
+    <button id="logoutBtn" class="btn danger">
+        Logout
+    </button>
+
+</section>
+
+
+<!-- NAVIGATION -->
+<nav id="bottomNav" class="bottom-nav hidden">
+
+    <div class="nav active" data-screen="homeScreen">
+        <span class="nav-icon">🏠</span>
+        Home
+    </div>
+
+    <div class="nav" data-screen="historyScreen">
+        <span class="nav-icon">📋</span>
+        History
+    </div>
+
+    <div class="nav" data-screen="scanScreen">
+        <span class="nav-icon">📷</span>
+        Scan
+    </div>
+
+    <div class="nav" data-screen="payScreen">
+        <span class="nav-icon">💸</span>
+        Pay
+    </div>
+
+    <div class="nav" data-screen="profileScreen">
+        <span class="nav-icon">👤</span>
+        Profile
+    </div>
+
+</nav>
+
+</div>
+
+
+<!-- MODAL -->
+
+<div id="detailModal" class="modal">
+
+    <div class="modal-box">
+
+        <div class="modal-head">
+
+            <strong id="modalId"></strong>
+
+            <span id="modalClose" class="close">
+                ✕
+            </span>
+
+        </div>
+
+        <div id="modalTitle" class="modal-title"></div>
+
+        <div id="modalMeta" class="modal-meta"></div>
+
+        <div id="modalAmount" class="modal-amount"></div>
+
+        <div id="modalDesc" class="modal-desc"></div>
+
+        <button id="modalCloseBtn" class="btn">
+            Close
+        </button>
+
+    </div>
+
+</div>
+
+
+<div id="toast"></div>
+
+
+<script>
+(() => {
+
+"use strict";
+
+/* =========================
+   CONFIG
+========================= */
+
+const VALID_USER = "raj";
+const VALID_PASS = "raj00";
+
+let balance = 243188.16;
+
+
+/* =========================
+   DATA
+========================= */
+
+let bountyData = [
+
+{
+    id:"BB-089",
+    title:"SQLi - Payment Gateway",
+    date:"28 Jun 2026",
+    amount:85000,
+    type:"credit",
+    platform:"HackerOne",
+    icon:"🔓",
+    desc:"Demo transaction representing a critical SQL injection bounty."
+},
+
+{
+    id:"BB-077",
+    title:"XSS - Google Subdomain",
+    date:"15 Jun 2026",
+    amount:42000,
+    type:"credit",
+    platform:"Bugcrowd",
+    icon:"💉",
+    desc:"Demo reflected XSS bounty transaction."
+},
+
+{
+    id:"BB-065",
+    title:"IDOR - Social Platform",
+    date:"02 Jun 2026",
+    amount:67500,
+    type:"credit",
+    platform:"Private Program",
+    icon:"🔑",
+    desc:"Demo IDOR bounty transaction."
+},
+
+{
+    id:"BB-058",
+    title:"CSRF Bypass",
+    date:"20 May 2026",
+    amount:38000,
+    type:"credit",
+    platform:"HackerOne",
+    icon:"⚡",
+    desc:"Demo CSRF bounty transaction."
+},
+
+{
+    id:"BB-049",
+    title:"RCE File Upload",
+    date:"05 May 2026",
+    amount:100000,
+    type:"credit",
+    platform:"Bugcrowd",
+    icon:"💻",
+    desc:"Demo remote-code-execution bounty transaction."
+},
+
+{
+    id:"BB-041",
+    title:"SSRF Internal Access",
+    date:"18 Apr 2026",
+    amount:55000,
+    type:"credit",
+    platform:"HackerOne",
+    icon:"🌐",
+    desc:"Demo SSRF bounty transaction."
+},
+
+{
+    id:"TX-033",
+    title:"Withdrawal to Bank",
+    date:"10 Apr 2026",
+    amount:120000,
+    type:"debit",
+    platform:"Self",
+    icon:"🏦",
+    desc:"Demo bank withdrawal."
+},
+
+{
+    id:"BB-028",
+    title:"Authentication Bypass",
+    date:"22 Mar 2026",
+    amount:92000,
+    type:"credit",
+    platform:"MSRC",
+    icon:"🔐",
+    desc:"Demo authentication vulnerability bounty."
+},
+
+{
+    id:"BB-019",
+    title:"Open Redirect",
+    date:"08 Mar 2026",
+    amount:25000,
+    type:"credit",
+    platform:"HackerOne",
+    icon:"↗️",
+    desc:"Demo open redirect bounty."
+},
+
+{
+    id:"BB-012",
+    title:"Race Condition",
+    date:"14 Feb 2026",
+    amount:78000,
+    type:"credit",
+    platform:"HackerOne",
+    icon:"🏎️",
+    desc:"Demo race-condition bounty."
+}
+
+];
+
+
+/* =========================
+   DOM
+========================= */
+
+const $ = id => document.getElementById(id);
+
+const screens = [
+    "loginScreen",
+    "homeScreen",
+    "historyScreen",
+    "scanScreen",
+    "payScreen",
+    "profileScreen"
+];
+
+const bottomNav = $("bottomNav");
+const toast = $("toast");
+const modal = $("detailModal");
+
+
+/* =========================
+   HELPERS
+========================= */
+
+function formatMoney(value){
+
+    return "₹" + Number(value).toLocaleString(
+        "en-IN",
+        {
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+        }
+    );
+
+}
+
+
+function updateBalance(){
+
+    $("mainBalance").textContent = formatMoney(balance);
+
+    $("profileBalance").textContent = formatMoney(balance);
+
+}
+
+
+function showToast(message){
+
+    toast.textContent = message;
+
+    toast.classList.add("show");
+
+    clearTimeout(window.toastTimer);
+
+    window.toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+    },2200);
+
+}
+
+
+/* =========================
+   NAVIGATION
+========================= */
+
+function navigateTo(screenId){
+
+    if(screenId !== "loginScreen" && !isLoggedIn()){
+
+        showToast("Please login first");
+
+        return;
+    }
+
+    screens.forEach(id => {
+
+        $(id).classList.remove("active");
+
+    });
+
+    $(screenId).classList.add("active");
+
+    if(screenId === "loginScreen"){
+
+        bottomNav.classList.add("hidden");
+
+    }else{
+
+        bottomNav.classList.remove("hidden");
+
+    }
+
+    document.querySelectorAll(".nav").forEach(item => {
+
+        item.classList.toggle(
+            "active",
+            item.dataset.screen === screenId
+        );
+
+    });
+
+    if(screenId === "homeScreen"){
+
+        renderRecent();
+
+    }
+
+    if(screenId === "historyScreen"){
+
+        renderHistory();
+
+    }
+
+    if(screenId === "profileScreen"){
+
+        updateBalance();
+
+    }
+
+}
+
+
+function isLoggedIn(){
+
+    return sessionStorage.getItem("hm_logged") === "true";
+
+}
+
+
+/* =========================
+   LOGIN
+========================= */
+
+function login(){
+
+    sessionStorage.setItem("hm_logged","true");
+
+    $("loginError").textContent = "";
+
+    navigateTo("homeScreen");
+
+    showToast("Welcome back, Raj 👋");
+
+}
+
+
+function logout(){
+
+    sessionStorage.removeItem("hm_logged");
+
+    navigateTo("loginScreen");
+
+    $("userId").value = "";
+
+    $("password").value = "";
+
+    showToast("Logged out");
+
+}
+
+
+/* =========================
+   RENDER TRANSACTIONS
+========================= */
+
+function transactionHTML(b){
+
+    const sign = b.type === "credit" ? "+" : "-";
+
+    const cls = b.type === "credit"
+        ? "credit"
+        : "debit";
+
+    return `
+
+        <div class="transaction" data-id="${b.id}">
+
+            <div class="tx-icon">
+                ${b.icon}
+            </div>
+
+            <div class="tx-info">
+
+                <div class="tx-title">
+                    ${escapeHTML(b.title)}
+                </div>
+
+                <div class="tx-meta">
+                    ${escapeHTML(b.platform)} • ${escapeHTML(b.date)}
+                </div>
+
+            </div>
+
+            <div class="amount ${cls}">
+                ${sign}${formatMoney(b.amount)}
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+function renderRecent(){
+
+    $("recentBounties").innerHTML =
+        bountyData
+        .slice(0,4)
+        .map(transactionHTML)
+        .join("");
+
+    attachTransactionEvents();
+
+}
+
+
+function renderHistory(){
+
+    const active =
+        document.querySelector(".filter.active");
+
+    const filter =
+        active ? active.dataset.filter : "all";
+
+    const search =
+        $("searchInput").value.trim().toLowerCase();
+
+    let data = [...bountyData];
+
+    if(filter !== "all"){
+
+        data = data.filter(
+            item => item.type === filter
+        );
+
+    }
+
+    if(search){
+
+        data = data.filter(item =>
+            item.title.toLowerCase().includes(search) ||
+            item.platform.toLowerCase().includes(search) ||
+            item.id.toLowerCase().includes(search)
+        );
+
+    }
+
+    if(!data.length){
+
+        $("fullBountyList").innerHTML = `
+            <div style="
+                text-align:center;
+                color:#777;
+                padding:35px 10px;
+                font-size:13px;
+            ">
+                No transactions found.
+            </div>
+        `;
+
+        return;
+
+    }
+
+    $("fullBountyList").innerHTML =
+        data.map(transactionHTML).join("");
+
+    attachTransactionEvents();
+
+}
+
+
+function attachTransactionEvents(){
+
+    document.querySelectorAll(".transaction[data-id]")
+    .forEach(item => {
+
+        item.addEventListener("click",() => {
+
+            showDetail(item.dataset.id);
+
+        });
+
+    });
+
+}
+
+
+/* =========================
+   MODAL
+========================= */
+
+function showDetail(id){
+
+    const item =
+        bountyData.find(x => x.id === id);
+
+    if(!item) return;
+
+    $("modalId").textContent = item.id;
+
+    $("modalTitle").textContent = item.title;
+
+    $("modalMeta").textContent =
+        `${item.platform} • ${item.date}`;
+
+    $("modalAmount").textContent =
+        `${item.type === "credit" ? "+" : "-"}${formatMoney(item.amount)}`;
+
+    $("modalAmount").className =
+        `modal-amount ${item.type === "credit" ? "credit" : "debit"}`;
+
+    $("modalDesc").textContent = item.desc;
+
+    modal.classList.add("active");
+
+}
+
+
+function closeModal(){
+
+    modal.classList.remove("active");
+
+}
+
+
+/* =========================
+   PAYMENT
+========================= */
+
+function makePayment(){
+
+    const payee =
+        $("payeeId").value.trim();
+
+    const amount =
+        Number($("payAmount").value);
+
+    if(!payee){
+
+        showToast("Enter UPI ID or account");
+
+        return;
+    }
+
+    if(!Number.isFinite(amount) || amount <= 0){
+
+        showToast("Enter a valid amount");
+
+        return;
+    }
+
+    if(amount > balance){
+
+        showToast("Insufficient demo balance");
+
+        return;
+    }
+
+    balance -= amount;
+
+    const transaction = {
+
+        id:"TX-" + Math.floor(
+            100 + Math.random() * 900
+        ),
+
+        title:"Payment to " + payee,
+
+        date:new Date().toLocaleDateString(
+            "en-IN",
+            {
+                day:"2-digit",
+                month:"short",
+                year:"numeric"
             }
-            function updateBalanceDisplay() {
-                if (mainBalanceEl) mainBalanceEl.innerHTML = formatBalance(balance).replace('₹', '₹') + '<small>.16</small>'; // keep decimals static for demo
-                // Actually update full
-                mainBalanceEl.innerHTML = formatBalance(balance);
-            }
+        ),
 
-            function renderRecentBounties() {
-                if (!recentBountiesEl) return;
-                const recent = bountyData.slice(0, 4);
-                recentBountiesEl.innerHTML = recent.map(b => `
-                    <div class="bounty-item animate-in" onclick="showDetail('${b.id}')">
-                        <div class="bounty-icon">${b.icon}</div>
-                        <div class="bounty-info">
-                            <div style="font-weight:600;">${b.title}</div>
-                            <div style="font-size:11px;color:#777;">${b.platform} • ${b.date}</div>
-                        </div>
-                        <div class="bounty-amount ${b.type==='credit'?'text-success':'text-danger'}">${b.type==='credit'?'+':'-'}₹${b.amount.toLocaleString('en-IN')}</div>
-                    </div>
-                `).join('');
-            }
+        amount:amount,
 
-            function renderFullHistory(filter = 'all', search = '') {
-                if (!fullBountyListEl) return;
-                let filtered = bountyData;
-                if (filter === 'credit') filtered = filtered.filter(b => b.type === 'credit');
-                if (filter === 'debit') filtered = filtered.filter(b => b.type === 'debit');
-                if (search.trim()) {
-                    const s = search.toLowerCase();
-                    filtered = filtered.filter(b => b.title.toLowerCase().includes(s) || b.platform.toLowerCase().includes(s));
-                }
-                fullBountyListEl.innerHTML = filtered.map(b => `
-                    <div class="bounty-item animate-in" onclick="showDetail('${b.id}')">
-                        <div class="bounty-icon">${b.icon}</div>
-                        <div class="bounty-info">
-                            <div style="font-weight:600;">${b.title}</div>
-                            <div style="font-size:11px;color:#777;">${b.platform} • ${b.date}</div>
-                        </div>
-                        <div class="bounty-amount ${b.type==='credit'?'text-success':'text-danger'}">${b.type==='credit'?'+':'-'}₹${b.amount.toLocaleString('en-IN')}</div>
-                    </div>
-                `).join('') || '<p style="color:#777; text-align:center; padding:20px;">No transactions found.</p>';
-            }
+        type:"debit",
 
-            window.showDetail = function(id) {
-                const b = bountyData.find(x => x.id === id);
-                if (!b) return;
-                modalContent.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>${b.id}</h3>
-                        <span onclick="document.getElementById('detailModal').classList.remove('active')" style="cursor:pointer; font-size:20px;">✕</span>
-                    </div>
-                    <div style="margin:16px 0;">
-                        <p><strong>${b.title}</strong></p>
-                        <p style="color:#777;">${b.platform} • ${b.date}</p>
-                        <p style="font-size:24px; font-weight:700;" class="${b.type==='credit'?'text-success':'text-danger'}">${b.type==='credit'?'+':'-'}₹${b.amount.toLocaleString('en-IN')}</p>
-                        <p style="margin-top:12px;">${b.desc || 'No description.'}</p>
-                    </div>
-                    <button class="btn" style="margin-top:10px;" onclick="document.getElementById('detailModal').classList.remove('active')">Close</button>
-                `;
-                detailModal.classList.add('active');
-            };
+        platform:"Demo UPI",
 
-            window.showToast = function(msg) {
-                toastEl.textContent = msg;
-                toastEl.style.opacity = '1';
-                setTimeout(() => { toastEl.style.opacity = '0'; }, 2000);
-            };
+        icon:"💸",
 
-            function navigateTo(screenId) {
-                if (!isLoggedIn() && screenId !== 'loginScreen') {
-                    showToast('Please login first');
-                    return;
-                }
-                Object.values(screens).forEach(s => s.classList.remove('active'));
-                if (screens[screenId]) screens[screenId].classList.add('active');
-                currentScreen = screenId;
-                updateNavActive(screenId);
-                if (screenId === 'homeScreen') {
-                    updateBalanceDisplay();
-                    renderRecentBounties();
-                }
-                if (screenId === 'historyScreen') renderFullHistory(getActiveFilter(), searchInput?.value || '');
-            }
+        desc:`Demo payment of ${formatMoney(amount)} to ${payee}.`
 
-            function updateNavActive(screenId) {
-                navItems.forEach(item => {
-                    const target = item.dataset.screen;
-                    item.classList.toggle('active', target === screenId);
-                });
-            }
+    };
 
-            function getActiveFilter() {
-                const activeChip = document.querySelector('#filterBar .filter-chip.active');
-                return activeChip ? activeChip.dataset.filter : 'all';
-            }
+    bountyData.unshift(transaction);
 
-            function isLoggedIn() {
-                return sessionStorage.getItem('hm_logged') === 'true';
-            }
+    $("payeeId").value = "";
 
-            function login() {
-                sessionStorage.setItem('hm_logged', 'true');
-                screens.login.classList.remove('active');
-                navigateTo('homeScreen');
-            }
+    $("payAmount").value = "";
 
-            function logout() {
-                sessionStorage.removeItem('hm_logged');
-                Object.values(screens).forEach(s => s.classList.remove('active'));
-                screens.login.classList.add('active');
-                currentScreen = 'loginScreen';
-                updateNavActive('homeScreen');
-                showToast('Logged out');
-            }
+    updateBalance();
 
-            window.fillDemo = function() {
-                document.getElementById('userId').value = VALID_USER;
-                document.getElementById('password').value = VALID_PASS;
-            };
+    showToast(
+        `Demo payment: ${formatMoney(amount)}`
+    );
 
-            // ---- Event Listeners ----
-            document.getElementById('loginBtn').addEventListener('click', () => {
-                const uid = document.getElementById('userId').value.trim();
-                const pwd = document.getElementById('password').value.trim();
-                const err = document.getElementById('loginError');
-                if (uid === VALID_USER && pwd === VALID_PASS) {
-                    err.textContent = '';
-                    login();
-                } else {
-                    err.textContent = 'Invalid credentials! Use raj / raj00';
-                }
-            });
+}
 
-            // Bottom nav
-            navItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    const screenId = item.dataset.screen;
-                    navigateTo(screenId);
-                });
-            });
 
-            // Filter chips
-            filterBar.addEventListener('click', (e) => {
-                if (e.target.classList.contains('filter-chip')) {
-                    filterBar.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-                    e.target.classList.add('active');
-                    renderFullHistory(getActiveFilter(), searchInput.value);
-                }
-            });
+/* =========================
+   QR SIMULATION
+========================= */
 
-            searchInput.addEventListener('input', (e) => {
-                renderFullHistory(getActiveFilter(), e.target.value);
-            });
+function simulateScan(){
 
-            // Pay functionality
-            document.getElementById('payNowBtn').addEventListener('click', () => {
-                const payee = document.getElementById('payeeId').value.trim();
-                const amountStr = document.getElementById('payAmount').value;
-                const amount = parseFloat(amountStr);
-                if (!payee || isNaN(amount) || amount <= 0) {
-                    showToast('Enter valid details');
-                    return;
-                }
-                if (amount > balance) {
-                    showToast('Insufficient balance');
-                    return;
-                }
-                balance -= amount;
-                updateBalanceDisplay();
-                // Add debit transaction
-                bountyData.unshift({
-                    id: 'TX-' + Math.floor(Math.random()*900+100),
-                    title: 'Payment to ' + payee,
-                    date: new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}),
-                    amount: amount,
-                    type: 'debit',
-                    platform: 'UPI',
-                    icon: '💸',
-                    desc: 'Sent ₹'+amount.toLocaleString('en-IN')+' to '+payee
-                });
-                document.getElementById('payeeId').value = '';
-                document.getElementById('payAmount').value = '';
-                showToast('Payment of ₹'+amount.toLocaleString('en-IN')+' sent!');
-                if (currentScreen === 'homeScreen') renderRecentBounties();
-                if (currentScreen === 'historyScreen') renderFullHistory(getActiveFilter(), searchInput.value);
-            });
+    showToast("QR scanned successfully 📷");
 
-            // Scan simulation
-            window.simulateScan = function() {
-                showToast('QR scanned: bugbounty@hackermoney');
-                document.getElementById('payeeId').value = 'bugbounty@hackermoney';
-                navigateTo('payScreen');
-            };
+    $("payeeId").value =
+        "bugbounty@hackermoney";
 
-            // Close modal on overlay click
-            detailModal.addEventListener('click', (e) => {
-                if (e.target === detailModal) detailModal.classList.remove('active');
-            });
+    setTimeout(() => {
 
-            // Initial check
-            if (isLoggedIn()) {
-                screens.login.classList.remove('active');
-                navigateTo('homeScreen');
-            } else {
-                screens.login.classList.add('active');
-            }
+        navigateTo("payScreen");
 
-            // Persist balance? Not needed but can be added
-            updateBalanceDisplay();
-            renderRecentBounties();
-        })();
-    </script>
+    },500);
+
+}
+
+
+/* =========================
+   ESCAPE HTML
+========================= */
+
+function escapeHTML(value){
+
+    return String(value)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+
+}
+
+
+/* =========================
+   EVENTS
+========================= */
+
+$("loginBtn").addEventListener("click",() => {
+
+    const user =
+        $("userId").value.trim();
+
+    const pass =
+        $("password").value;
+
+    if(user === VALID_USER &&
+       pass === VALID_PASS){
+
+        login();
+
+    }else{
+
+        $("loginError").textContent =
+            "Invalid credentials. Demo: raj / raj00";
+
+    }
+
+});
+
+
+$("demoBtn").addEventListener("click",() => {
+
+    $("userId").value = VALID_USER;
+
+    $("password").value = VALID_PASS;
+
+    $("loginError").textContent = "";
+
+});
+
+
+$("password").addEventListener("keydown",e => {
+
+    if(e.key === "Enter"){
+
+        $("loginBtn").click();
+
+    }
+
+});
+
+
+/* Quick actions */
+
+document.querySelectorAll("[data-go]")
+.forEach(button => {
+
+    button.addEventListener("click",() => {
+
+        navigateTo(button.dataset.go);
+
+    });
+
+});
+
+
+$("reportBtn").addEventListener("click",() => {
+
+    showToast("🐞 Bug report module opened");
+
+});
+
+
+/* Bottom navigation */
+
+document.querySelectorAll(".nav")
+.forEach(item => {
+
+    item.addEventListener("click",() => {
+
+        navigateTo(item.dataset.screen);
+
+    });
+
+});
+
+
+/* Filters */
+
+document.querySelectorAll(".filter")
+.forEach(filter => {
+
+    filter.addEventListener("click",() => {
+
+        document.querySelectorAll(".filter")
+        .forEach(x => x.classList.remove("active"));
+
+        filter.classList.add("active");
+
+        renderHistory();
+
+    });
+
+});
+
+
+/* Search */
+
+$("searchInput").addEventListener(
+    "input",
+    renderHistory
+);
+
+
+/* Payment */
+
+$("payNowBtn").addEventListener(
+    "click",
+    makePayment
+);
+
+
+/* Recent payee */
+
+$("recentPayee").addEventListener("click",() => {
+
+    $("payeeId").value =
+        "bugbounty@hackermoney";
+
+    navigateTo("payScreen");
+
+});
+
+
+/* Scanner */
+
+$("simulateScanBtn").addEventListener(
+    "click",
+    simulateScan
+);
+
+
+/* Logout */
+
+$("logoutBtn").addEventListener(
+    "click",
+    logout
+);
+
+
+/* Modal */
+
+$("modalClose").addEventListener(
+    "click",
+    closeModal
+);
+
+$("modalCloseBtn").addEventListener(
+    "click",
+    closeModal
+);
+
+modal.addEventListener("click",e => {
+
+    if(e.target === modal){
+
+        closeModal();
+
+    }
+
+});
+
+
+document.addEventListener("keydown",e => {
+
+    if(e.key === "Escape"){
+
+        closeModal();
+
+    }
+
+});
+
+
+/* =========================
+   INITIALIZATION
+========================= */
+
+updateBalance();
+
+renderRecent();
+
+if(isLoggedIn()){
+
+    navigateTo("homeScreen");
+
+}else{
+
+    navigateTo("loginScreen");
+
+}
+
+})();
+</script>
+
 </body>
 </html>
